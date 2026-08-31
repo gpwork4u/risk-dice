@@ -350,27 +350,35 @@ const omenEl   = document.getElementById('omen');
 const omenImg  = document.getElementById('omenImg');
 const omenText = document.getElementById('omenText');
 const XIONG_IMAGES = Array.from(
-  { length:21 },
+  { length:20 },
   (_, i) => `assets/xiong/xiong-${String(i + 1).padStart(2, '0')}.webp`
 );
-/* 載入畫面期間就把所有大凶素材 preload 進瀏覽器快取，
-   等真的骰到大凶時圖片已在記憶體裡，不會有延遲空白 */
-function preloadXiongImages() {
+const DAJI_IMAGES = Array.from(
+  { length:1 },
+  (_, i) => `assets/daji/daji-${String(i + 1).padStart(2, '0')}.webp`
+);
+/* 載入畫面期間就把吉凶素材全部 preload 進瀏覽器快取，
+   等真的骰出結果時圖片已在記憶體裡，不會有延遲空白 */
+function preloadOmenImages() {
   return Promise.all(
-    XIONG_IMAGES.map(src => new Promise(resolve => {
+    [...XIONG_IMAGES, ...DAJI_IMAGES].map(src => new Promise(resolve => {
       const img = new Image();
       img.onload = img.onerror = resolve;
       img.src = src;
     }))
   );
 }
+function pick(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
 function showOmen(face) {
   const xiong = face === XIONG_FACE;
   omenText.textContent = xiong ? '大凶' : '大吉吧';
   omenEl.style.setProperty('--band', xiong ? '#e04b40' : '#c9a24b');
-  if (xiong) {
-    omenImg.src = XIONG_IMAGES[Math.floor(Math.random() * XIONG_IMAGES.length)];
-    omenImg.alt = '大凶結果素材圖';
+  const pool = xiong ? XIONG_IMAGES : DAJI_IMAGES;
+  if (pool.length) {
+    omenImg.src = pick(pool);
+    omenImg.alt = xiong ? '大凶結果素材圖' : '大吉結果素材圖';
     omenImg.hidden = false;
   } else {
     omenImg.hidden = true;
@@ -494,14 +502,14 @@ addEventListener('keydown', e => {
 });
 
 /* 等字型就緒再畫骰面貼圖，避免刻字變成備援字體；
-   同時 preload 大凶素材圖，兩者都完成才收起載入畫面 */
+   同時 preload 吉凶素材圖，兩者都完成才收起載入畫面 */
 Promise.all([
   Promise.race([
     document.fonts.load('900 60px "Noto Sans TC"'),
     new Promise(r => setTimeout(r, 2500)),
   ]),
   Promise.race([
-    preloadXiongImages(),
+    preloadOmenImages(),
     new Promise(r => setTimeout(r, 3000)),
   ]),
 ]).then(() => {
