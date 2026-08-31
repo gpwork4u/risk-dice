@@ -350,9 +350,20 @@ const omenEl   = document.getElementById('omen');
 const omenImg  = document.getElementById('omenImg');
 const omenText = document.getElementById('omenText');
 const XIONG_IMAGES = Array.from(
-  { length:20 },
-  (_, i) => `assets/xiong/xiong-${String(i + 1).padStart(2, '0')}.png`
+  { length:21 },
+  (_, i) => `assets/xiong/xiong-${String(i + 1).padStart(2, '0')}.webp`
 );
+/* 載入畫面期間就把所有大凶素材 preload 進瀏覽器快取，
+   等真的骰到大凶時圖片已在記憶體裡，不會有延遲空白 */
+function preloadXiongImages() {
+  return Promise.all(
+    XIONG_IMAGES.map(src => new Promise(resolve => {
+      const img = new Image();
+      img.onload = img.onerror = resolve;
+      img.src = src;
+    }))
+  );
+}
 function showOmen(face) {
   const xiong = face === XIONG_FACE;
   omenText.textContent = xiong ? '大凶' : '大吉吧';
@@ -482,10 +493,17 @@ addEventListener('keydown', e => {
   }
 });
 
-/* 等字型就緒再畫骰面貼圖，避免刻字變成備援字體 */
-Promise.race([
-  document.fonts.load('900 60px "Noto Sans TC"'),
-  new Promise(r => setTimeout(r, 2500)),
+/* 等字型就緒再畫骰面貼圖，避免刻字變成備援字體；
+   同時 preload 大凶素材圖，兩者都完成才收起載入畫面 */
+Promise.all([
+  Promise.race([
+    document.fonts.load('900 60px "Noto Sans TC"'),
+    new Promise(r => setTimeout(r, 2500)),
+  ]),
+  Promise.race([
+    preloadXiongImages(),
+    new Promise(r => setTimeout(r, 3000)),
+  ]),
 ]).then(() => {
   buildDice();
   document.getElementById('boot').classList.add('done');
